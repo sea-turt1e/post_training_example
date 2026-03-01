@@ -19,15 +19,15 @@ QLoRA + DPO 組み合わせ学習スクリプト
     - モデルサイズは facebook/opt-125m (125M パラメータ) で手軽に試せます。
 """
 
-import torch
 from dataclasses import dataclass, field
 from typing import Optional
 
+import torch
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          BitsAndBytesConfig)
 from trl import DPOConfig, DPOTrainer
-
 
 # ---------------------------------------------------------------------------
 # ハイパーパラメータ設定
@@ -154,6 +154,10 @@ def preprocess_dataset(dataset, max_samples: Optional[int] = None):
 def load_model_and_tokenizer(config: ScriptConfig):
     """QLoRA 設定でモデルとトークナイザを読み込む。"""
     use_cuda = torch.cuda.is_available()
+    # Macを Mシリーズ使用する場合
+    if not use_cuda:
+        use_cuda = torch.backends.mps.is_available()
+    print(f"使用デバイス: {'CUDA' if torch.cuda.is_available() else 'MPS' if torch.backends.mps.is_available() else 'CPU'}")
 
     # 4-bit 量子化の設定 (QLoRA の核心部分)
     bnb_config = None
@@ -185,8 +189,14 @@ def load_model_and_tokenizer(config: ScriptConfig):
         lora_dropout=config.lora_dropout,
         bias="none",
         task_type="CAUSAL_LM",
-        # OPT モデルの Attention 投影層を対象にする
-        target_modules=["q_proj", "v_proj"],
+        # OPT モデルの Attention 投影層を対象にする。Loraの元々の設定。
+        target_modules=["q_proj", "v_proj"], 
+        # 他に以下がある。
+        # 入力
+        # └── Self-Attention ──── q_proj, k_proj, v_proj, o_proj
+        # └── FFN (MLP) ────────── gate_proj, up_proj, down_proj
+        # └── 出力ヘッド ──────── lm_head (embeddingに近い)
+
     )
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
