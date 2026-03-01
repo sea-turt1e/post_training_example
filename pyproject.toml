@@ -1,0 +1,16 @@
+[project]
+name = "post-training-example"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "accelerate>=0.29.0",
+    "bitsandbytes>=0.43.0",
+    "datasets>=2.18.0",
+    "peft>=0.10.0",
+    "scipy>=1.17.1",
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "trl>=0.8.6",
+]
