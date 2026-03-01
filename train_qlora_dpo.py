@@ -253,12 +253,11 @@ def main():
         learning_rate=config.learning_rate,
         beta=config.beta,
         max_length=config.max_length,
-        max_prompt_length=config.max_length // 2,
         fp16=use_cuda,                      # GPU 時は float16 混合精度
         bf16=False,
         logging_steps=10,
         save_strategy="epoch",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         remove_unused_columns=False,
         report_to="none",                   # wandb 等への送信を無効化
     )
@@ -268,7 +267,7 @@ def main():
         args=dpo_config,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
     )
 
     # 4. 学習開始
