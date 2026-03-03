@@ -244,6 +244,7 @@ def main():
     # 3. DPO 学習設定
     print("\n[3/4] DPO 学習を設定中...")
     use_cuda = torch.cuda.is_available()
+    use_mps = not use_cuda and torch.backends.mps.is_available()
 
     dpo_config = DPOConfig(
         output_dir=config.output_dir,
@@ -288,6 +289,8 @@ def main():
     inputs = tokenizer(prompt, return_tensors="pt")
     if use_cuda:
         inputs = {k: v.cuda() for k, v in inputs.items()}
+    elif use_mps:
+        inputs = {k: v.to("mps") for k, v in inputs.items()}
 
     with torch.no_grad():
         outputs = model.generate(
