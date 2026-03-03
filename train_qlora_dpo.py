@@ -11,7 +11,8 @@ QLoRA + DPO 組み合わせ学習スクリプト
     pip install -r requirements.txt
 
 使い方:
-    python train_qlora_dpo.py
+    python train_qlora_dpo.py                    # 通常実行
+    python train_qlora_dpo.py  # trial_mode=True でトライアル実行 (ScriptConfig を編集)
 
 ローカル実行のヒント:
     - GPU (VRAM 8GB 以上推奨) があると学習が高速化されます。
@@ -101,6 +102,12 @@ class ScriptConfig:
     beta: float = field(
         default=0.1,
         metadata={"help": "DPO の温度パラメータ β"},
+    )
+
+    # --- トライアルモード ---
+    trial_mode: bool = field(
+        default=False,
+        metadata={"help": "True にするとサンプル数・ステップ数を最小化してすぐに学習が終わる動作確認モード"},
     )
 
 
@@ -224,7 +231,18 @@ def main():
     print(f"4-bit 量子化: {config.load_in_4bit}")
     print(f"LoRA ランク : {config.lora_r}")
     print(f"β (DPO)     : {config.beta}")
+    if config.trial_mode:
+        print("[トライアルモード] サンプル数・ステップ数を最小化して動作確認します")
     print("=" * 60)
+
+    # トライアルモード: 各設定を上書き
+    if config.trial_mode:
+        config.max_samples = 20
+        config.max_eval_samples = 10
+        config.num_train_epochs = 1
+        config.per_device_train_batch_size = 1
+        config.gradient_accumulation_steps = 1
+        config.max_length = 128
 
     # 1. データセットの読み込みと前処理
     print("\n[1/4] データセットを読み込み中...")
@@ -256,9 +274,10 @@ def main():
         max_length=config.max_length,
         fp16=use_cuda,                      # GPU 時は float16 混合精度
         bf16=False,
-        logging_steps=10,
-        save_strategy="epoch",
-        eval_strategy="epoch",
+        logging_steps=1 if config.trial_mode else 10,
+        max_steps=5 if config.trial_mode else -1,   # トライアル時は 5 ステップで打ち切り
+        save_strategy="no" if config.trial_mode else "epoch",
+        eval_strategy="no" if config.trial_mode else "epoch",
         remove_unused_columns=False,
         report_to="none",                   # wandb 等への送信を無効化
     )
